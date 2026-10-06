@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ghalib-1",
+    "title": "दिल-ए-नादाँ तुझे हुआ क्या है",
+    "lines": "दिल-ए-नादाँ तुझे हुआ क्या है\nआख़िर इस दर्द की दवा क्या है\n\nहम हैं मुश्ताक़ और वो बे-ज़ार\nया इलाही ये माजरा क्या है",
+    "poet": "मिर्ज़ा ग़ालिब",
+    "takhallis": "ग़ालिब",
+    "mood": "Dard",
+    "script": "urdu",
+    "favorite": true,
+    "createdAt": "2026-10-06T00:17:45.713Z",
+    "updatedAt": "2026-10-06T00:17:45.714Z"
+  },
+  {
+    "id": "mir-1",
+    "title": "پتا پتا بوٹا بوٹا",
+    "lines": "پتا پتا بوٹا بوٹا حال ہمارا جانے ہے\nجانے نہ جانے گل ہی نہ جانے باغ تو سارا جانے ہے",
+    "poet": "میر تقی میر",
+    "takhallis": "میر",
+    "mood": "Ishq",
+    "script": "nastaliq",
+    "favorite": true,
+    "createdAt": "2026-10-06T00:17:45.714Z",
+    "updatedAt": "2026-10-06T00:17:45.714Z"
+  },
+  {
+    "id": "faiz-1",
+    "title": "Mujhse Pehli Si Mohabbat",
+    "lines": "Mujhse pehli si mohabbat mere mehboob na maang\nMaine samjha tha ke tu hai to darakhshaan hai hayaat\n\nAur bhi dukh hain zamaane mein mohabbat ke siwa\nRaahatein aur bhi hain vasl ki raahat ke siwa",
+    "poet": "Faiz Ahmad Faiz",
+    "takhallis": "Faiz",
+    "mood": "Zindagi",
+    "script": "roman",
+    "favorite": false,
+    "createdAt": "2026-10-06T00:17:45.714Z",
+    "updatedAt": "2026-10-06T00:17:45.714Z"
+  }
+]

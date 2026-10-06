@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0c0a09] text-[#e7dfd5] font-sans antialiased min-h-screen selection:bg-amber-600/30 selection:text-amber-200;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #141210;
+}
+::-webkit-scrollbar-thumb {
+  background: #2e2822;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #473e35;
+}
+
+/* Nastaliq text styling for high legibility */
+.font-nastaliq {
+  font-family: 'Noto Nastaliq Urdu', serif;
+  line-height: 2.2 !important;
+  direction: rtl;
+}
+
+.font-urdu {
+  font-family: 'Amiri', serif;
+  line-height: 2.0 !important;
+  direction: rtl;
+}
+
+.font-hindi {
+  font-family: 'Rozha One', 'Noto Sans Devanagari', serif;
+  line-height: 1.8 !important;
+}
+
+.font-roman {
+  font-family: 'Cormorant Garamond', serif;
+  line-height: 1.7 !important;
+}

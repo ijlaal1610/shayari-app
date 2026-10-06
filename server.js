@@ -93,6 +93,43 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), port: PORT });
 });
 
+// GET transliterate English to Urdu/Hindi (Google Input Tools proxy with caching)
+const translitCache = new Map();
+
+app.get('/api/transliterate', async (req, res) => {
+  const text = (req.query.text || '').trim();
+  const lang = req.query.lang || 'ur'; // 'ur' or 'hi'
+  if (!text) {
+    return res.json({ words: [] });
+  }
+
+  const cacheKey = `${lang}:${text.toLowerCase()}`;
+  if (translitCache.has(cacheKey)) {
+    return res.json({ words: translitCache.get(cacheKey) });
+  }
+
+  const itc = lang === 'ur' ? 'ur-t-i0-und' : 'hi-t-i0-und';
+  try {
+    const url = `https://inputtools.google.com/request?text=${encodeURIComponent(text)}&itc=${itc}&num=5`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(3500) });
+    const data = await response.json();
+    if (data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1]) {
+      const candidates = data[1][0][1];
+      translitCache.set(cacheKey, candidates);
+      // Keep cache under 5000 items
+      if (translitCache.size > 5000) {
+        const firstKey = translitCache.keys().next().value;
+        translitCache.delete(firstKey);
+      }
+      return res.json({ words: candidates });
+    }
+    return res.json({ words: [text] });
+  } catch (err) {
+    console.error('Transliteration fetch error:', err.message);
+    return res.json({ words: [text] });
+  }
+});
+
 // GET all shayaris
 app.get('/api/shayaris', (req, res) => {
   const data = readData();

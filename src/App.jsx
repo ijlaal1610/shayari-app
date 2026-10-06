@@ -156,6 +156,7 @@ export default function App() {
             onCancelEdit={handleCancelEdit}
             penName={penName}
             onViewDiwan={() => setActiveTab('diwan')}
+            onExportCurrent={(draft) => setExportingShayari(draft)}
           />
         ) : (
           <ShayariList

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, Save, RotateCcw, Maximize2, Minimize2, 
   Check, Tag, BookOpen, Quote, Keyboard, Globe,
-  ArrowRight, X, Languages
+  ArrowRight, X, Languages, Smartphone
 } from 'lucide-react';
 import { MOODS, SCRIPTS } from '../data/sampleShayaris';
 import { fetchTransliterations, POETIC_SYMBOLS } from '../utils/transliterate';
@@ -12,7 +12,8 @@ export default function Editor({
   editingShayari, 
   onCancelEdit, 
   penName, 
-  onViewDiwan 
+  onViewDiwan,
+  onExportCurrent 
 }) {
   const [title, setTitle] = useState('');
   const [lines, setLines] = useState('');
@@ -188,6 +189,24 @@ export default function Editor({
     }, 10);
   };
 
+  const handleQuickInstaStory = () => {
+    if (!lines.trim()) {
+      alert('Please write at least one line or couplet first.');
+      return;
+    }
+    if (onExportCurrent) {
+      onExportCurrent({
+        title: title.trim() || 'Kalam',
+        lines: lines.trim(),
+        poet: penName || 'Ijlaal',
+        takhallis: penName || 'Ijlaal',
+        mood,
+        script,
+        favorite: editingShayari ? editingShayari.favorite : false
+      });
+    }
+  };
+
   const handleInsertCoupletBreak = () => {
     setLines(prev => prev + '\n\n');
     if (textareaRef.current) {
@@ -274,6 +293,16 @@ export default function Editor({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleQuickInstaStory}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-pink-600/25 via-rose-600/25 to-amber-600/20 hover:from-pink-600/40 hover:to-rose-600/40 text-pink-200 border border-pink-500/35 text-xs font-semibold shadow-sm transition-all"
+              title="Instantly generate an Instagram Story or Spotify-style Lyric picture"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-pink-400" />
+              <span>Insta Story / Picture</span>
+            </button>
+
             <button
               onClick={() => setIsZenMode(!isZenMode)}
               className="p-2 rounded-lg bg-[#221b14] hover:bg-[#2d241b] text-[#c9baa7] transition-all border border-[#33281d]"

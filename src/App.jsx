@@ -4,6 +4,7 @@ import Editor from './components/Editor';
 import ShayariList from './components/ShayariList';
 import CardExportModal from './components/CardExportModal';
 import BackupModal from './components/BackupModal';
+import MushairaModal from './components/MushairaModal';
 import { 
   getLocalShayaris, 
   saveLocalShayaris, 
@@ -21,8 +22,53 @@ export default function App() {
   const [editingShayari, setEditingShayari] = useState(null);
   const [exportingShayari, setExportingShayari] = useState(null);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isMushairaOpen, setIsMushairaOpen] = useState(false);
   const [penName, setPenName] = useState('Ijlaal');
   const [toastMessage, setToastMessage] = useState('');
+  
+  // Theme: 'dark' (Shab-e-Gham) or 'daylight' (Vintage Parchment)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('shayari_theme') || 'dark';
+  });
+
+  // PWA Install prompt
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setDeferredPrompt(null);
+        showToast('App installed successfully!');
+      }
+    } else {
+      alert('To install on your phone:\n• iPhone (Safari): Tap the Share icon ➔ "Add to Home Screen"\n• Android (Chrome): Tap the three dots ➔ "Install App" or "Add to Home Screen"');
+    }
+  };
+
+  // Theme effect on body
+  useEffect(() => {
+    localStorage.setItem('shayari_theme', theme);
+    if (theme === 'daylight') {
+      document.body.className = 'bg-[#fcf9f2] text-[#241a12] antialiased selection:bg-amber-300 selection:text-amber-950 transition-colors duration-300';
+    } else {
+      document.body.className = 'bg-[#0c0a08] text-[#ede2d0] antialiased selection:bg-amber-600/30 selection:text-amber-200 transition-colors duration-300';
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'daylight' : 'dark');
+  };
 
   // Initial load
   useEffect(() => {
@@ -124,9 +170,12 @@ export default function App() {
   };
 
   const favoritesCount = shayaris.filter(s => s.favorite).length;
+  const isDaylight = theme === 'daylight';
 
   return (
-    <div className="min-h-screen bg-[#0c0a08] text-[#ede2d0] flex flex-col font-sans selection:bg-amber-600/30 selection:text-amber-200">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
+      isDaylight ? 'bg-[#fcf9f2] text-[#241a12]' : 'bg-[#0c0a08] text-[#ede2d0]'
+    }`}>
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -145,6 +194,11 @@ export default function App() {
         onOpenBackup={() => setIsBackupModalOpen(true)}
         penName={penName}
         setPenName={handlePenNameChange}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onOpenMushaira={() => setIsMushairaOpen(true)}
+        showInstallBtn={true}
+        onInstallApp={handleInstallApp}
       />
 
       {/* Main Content Area */}
@@ -191,8 +245,18 @@ export default function App() {
         />
       )}
 
+      {/* Mushaira Stage Recital Modal */}
+      {isMushairaOpen && (
+        <MushairaModal
+          shayaris={shayaris}
+          onClose={() => setIsMushairaOpen(false)}
+        />
+      )}
+
       {/* Subtle Poetic Footer */}
-      <footer className="border-t border-[#1c1712] py-6 px-4 text-center text-xs text-[#706050] font-serif">
+      <footer className={`border-t py-6 px-4 text-center text-xs font-serif transition-colors ${
+        isDaylight ? 'border-[#ded4c3] text-[#786450] bg-[#f7f2e7]' : 'border-[#1c1712] text-[#706050] bg-[#0c0a08]'
+      }`}>
         <p className="flex items-center justify-center gap-2">
           <span>سخن شناسی و سخن سنجی</span>
           <span>•</span>

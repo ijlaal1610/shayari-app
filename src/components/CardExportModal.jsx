@@ -4,7 +4,8 @@ import {
   X, Download, Sparkles, Feather, Palette, 
   Type, Check, Loader2, Music, Copy, Smartphone, 
   Square, Layout, AlignLeft, AlignCenter, AlignRight,
-  Sliders, SlidersHorizontal, Disc, Play, Share2
+  Sliders, SlidersHorizontal, Disc, Play, Share2,
+  Image as ImageIcon, Trash2, Sliders as SliderIcon
 } from 'lucide-react';
 import { SCRIPTS } from '../data/sampleShayaris';
 
@@ -101,6 +102,12 @@ export default function CardExportModal({ shayari, onClose }) {
   const [selectedTheme, setSelectedTheme] = useState(THEMES[0].id);
   const [selectedScript, setSelectedScript] = useState(shayari.script || 'roman');
   
+  // Custom Background Photo
+  const [customBgImage, setCustomBgImage] = useState(null);
+  const [bgDarkness, setBgDarkness] = useState(55); // 0 to 90
+  const [bgBlur, setBgBlur] = useState(6); // 0 to 25
+  const photoInputRef = useRef(null);
+  
   // Customization controls
   const [title, setTitle] = useState(shayari.title || 'Kalam');
   const [author, setAuthor] = useState(shayari.takhallis || shayari.poet || 'Ijlaal');
@@ -125,6 +132,23 @@ export default function CardExportModal({ shayari, onClose }) {
   const showToastMsg = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCustomBgImage(event.target?.result);
+      showToastMsg('📸 Photo loaded as background!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setCustomBgImage(null);
+    if (photoInputRef.current) photoInputRef.current.value = '';
+    showToastMsg('Reset to color atmosphere.');
   };
 
   // Instant Download PNG
@@ -301,6 +325,73 @@ export default function CardExportModal({ shayari, onClose }) {
               </div>
             </div>
 
+            {/* Custom Photo Upload (LyricPost style) */}
+            <div className="p-3.5 rounded-2xl bg-[#18130e] border border-[#2b2118] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-serif uppercase tracking-wider text-[#9f8f7f] flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Custom Background Photo</span>
+                </label>
+                {customBgImage && (
+                  <button
+                    onClick={handleRemovePhoto}
+                    className="flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remove Photo</span>
+                  </button>
+                )}
+              </div>
+
+              {!customBgImage ? (
+                <label className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-[#3d2f21] hover:border-pink-500/50 bg-[#120e0a] hover:bg-[#1c1510] cursor-pointer text-xs text-[#b8a795] transition-all">
+                  <ImageIcon className="w-4 h-4 text-pink-400" />
+                  <span>Upload Photo / Wallpaper</span>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="space-y-2.5 pt-1">
+                  {/* Photo Darkness Overlay Slider */}
+                  <div>
+                    <div className="flex justify-between text-[11px] text-[#8e7e6e] mb-1">
+                      <span>Darkness Tint (Contrast)</span>
+                      <span className="font-mono text-amber-200">{bgDarkness}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="90"
+                      value={bgDarkness}
+                      onChange={(e) => setBgDarkness(Number(e.target.value))}
+                      className="w-full accent-pink-500 h-1.5 bg-[#292017] rounded-lg cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Photo Blur Slider */}
+                  <div>
+                    <div className="flex justify-between text-[11px] text-[#8e7e6e] mb-1">
+                      <span>Background Blur</span>
+                      <span className="font-mono text-amber-200">{bgBlur}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="25"
+                      value={bgBlur}
+                      onChange={(e) => setBgBlur(Number(e.target.value))}
+                      className="w-full accent-pink-500 h-1.5 bg-[#292017] rounded-lg cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Typography & Script */}
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -452,8 +543,25 @@ export default function CardExportModal({ shayari, onClose }) {
               }}
             >
               
+              {/* Custom Photo Background Layer */}
+              {customBgImage && (
+                <>
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105 transition-all duration-300"
+                    style={{
+                      backgroundImage: `url(${customBgImage})`,
+                      filter: `blur(${bgBlur}px)`,
+                    }}
+                  />
+                  <div 
+                    className="absolute inset-0 pointer-events-none transition-all duration-300"
+                    style={{ backgroundColor: `rgba(0,0,0, ${bgDarkness / 100})` }}
+                  />
+                </>
+              )}
+
               {/* Optional Background Glow Orb (Spotify Canvas style) */}
-              {showBlurBackdrop && (
+              {!customBgImage && showBlurBackdrop && (
                 <div 
                   className="absolute -top-20 -left-20 w-80 h-80 rounded-full blur-3xl opacity-25 pointer-events-none"
                   style={{ backgroundColor: themeConfig.accent }}

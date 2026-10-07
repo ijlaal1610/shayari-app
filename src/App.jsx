@@ -141,13 +141,37 @@ export default function App() {
     setEditingShayari(null);
   };
 
-  // Import Shayaris
+  // Import Shayaris (JSON or Markdown)
   const handleImportShayaris = async (importedList) => {
-    const combined = [...importedList, ...shayaris];
+    if (!Array.isArray(importedList) || importedList.length === 0) return;
+
+    // Normalization & unique map
     const uniqueMap = new Map();
-    combined.forEach(s => {
-      if (s.id) uniqueMap.set(s.id, s);
+    // Existing first
+    shayaris.forEach(s => {
+      if (s && s.id) uniqueMap.set(s.id, s);
     });
+
+    // Merge incoming
+    let newCount = 0;
+    importedList.forEach(item => {
+      if (!item || !item.lines || !item.lines.trim()) return;
+      const id = item.id || ('sh_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+      uniqueMap.set(id, {
+        id,
+        title: item.title || '',
+        lines: item.lines.trim(),
+        poet: item.poet || item.takhallis || penName || 'Ijlaal',
+        takhallis: item.takhallis || item.poet || penName || 'Ijlaal',
+        mood: item.mood || 'Ishq',
+        script: item.script || 'nastaliq',
+        favorite: Boolean(item.favorite),
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      newCount++;
+    });
+
     const result = Array.from(uniqueMap.values());
     setShayaris(result);
     saveLocalShayaris(result);
@@ -160,7 +184,7 @@ export default function App() {
       });
     } catch (e) {}
 
-    showToast(`Imported ${importedList.length} verses successfully`);
+    showToast(`Preserved ${newCount} verses in your Diwan`);
   };
 
   const handleRefreshFromServer = async () => {
@@ -258,6 +282,7 @@ export default function App() {
           onImportShayaris={handleImportShayaris}
           onClose={() => setIsBackupModalOpen(false)}
           onRefreshFromServer={handleRefreshFromServer}
+          theme={theme}
         />
       )}
 

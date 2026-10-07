@@ -143,11 +143,26 @@ const STAGE_THEMES = {
   }
 };
 
-export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
+// Theme modes for filtering and atmosphere
+const THEME_MODES = [
+  { id: 'all', name: 'All', urdu: 'تمام کلام', icon: '✨' },
+  { id: 'ishq', name: 'Ishq', urdu: 'عشق', icon: '❤️' },
+  { id: 'dard', name: 'Dard', urdu: 'درد', icon: '🔥' },
+  { id: 'zindagi', name: 'Zindagi', urdu: 'زندگی', icon: '🌿' },
+  { id: 'tanhai', name: 'Tanhai', urdu: 'تنہائی', icon: '🌙' },
+  { id: 'sufi', name: 'Sufi', urdu: 'صوفی', icon: '🔮' },
+  { id: 'yaadein', name: 'Yaadein', urdu: 'یادیں', icon: '🌸' },
+  { id: 'khamoshi', name: 'Khamoshi', urdu: 'خاموشی', icon: '🌫️' },
+  { id: 'falsafa', name: 'Falsafa', urdu: 'فلسفہ', icon: '📜' }
+];
+
+export default function MushairaModal({ shayaris = [], initialIndex = 0, onClose }) {
+  // Theme Mode Filter: 'all' (default, shows all shayaris) or specific mood ('ishq', 'dard', etc.)
+  const [selectedTheme, setSelectedTheme] = useState('all');
+  const [stageLighting, setStageLighting] = useState('midnight'); // Default stage lighting for 'all' mode: midnight, crimson, emerald, auto
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [fontScale, setFontScale] = useState(1.0); // Mobile responsive scale factor
   const [autoPlay, setAutoPlay] = useState(false);
-  const [stageTheme, setStageTheme] = useState('midnight'); // Default stage theme
   const [showControls, setShowControls] = useState(true); // Toggle controls for pure zen on phone
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -155,7 +170,20 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
 
-  const activeShayari = shayaris[currentIndex] || shayaris[0];
+  // Filter shayaris based on selected theme mode
+  const activeShayaris = React.useMemo(() => {
+    if (selectedTheme === 'all') {
+      return shayaris;
+    }
+    return shayaris.filter((s) => {
+      const sMood = (s.mood || '').trim().toLowerCase();
+      return sMood === selectedTheme.toLowerCase();
+    });
+  }, [shayaris, selectedTheme]);
+
+  // Keep index within valid range
+  const safeIndex = activeShayaris.length > 0 ? Math.min(currentIndex, activeShayaris.length - 1) : 0;
+  const activeShayari = activeShayaris[safeIndex] || null;
 
   const triggerHaptic = () => {
     if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
@@ -163,16 +191,22 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
     }
   };
 
-  const goToNext = () => {
-    if (shayaris.length <= 1) return;
+  const handleSelectTheme = (themeId) => {
+    setSelectedTheme(themeId);
+    setCurrentIndex(0);
     triggerHaptic();
-    setCurrentIndex((prev) => (prev + 1) % shayaris.length);
+  };
+
+  const goToNext = () => {
+    if (activeShayaris.length <= 1) return;
+    triggerHaptic();
+    setCurrentIndex((prev) => (prev + 1) % activeShayaris.length);
   };
 
   const goToPrev = () => {
-    if (shayaris.length <= 1) return;
+    if (activeShayaris.length <= 1) return;
     triggerHaptic();
-    setCurrentIndex((prev) => (prev - 1 + shayaris.length) % shayaris.length);
+    setCurrentIndex((prev) => (prev - 1 + activeShayaris.length) % activeShayaris.length);
   };
 
   // Fullscreen toggle on phone/browser
@@ -213,13 +247,13 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
   // Auto-advance if play mode enabled
   useEffect(() => {
     let interval;
-    if (autoPlay && shayaris.length > 1) {
+    if (autoPlay && activeShayaris.length > 1) {
       interval = setInterval(() => {
         goToNext();
       }, 7000);
     }
     return () => clearInterval(interval);
-  }, [autoPlay, shayaris.length]);
+  }, [autoPlay, activeShayaris.length]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -236,21 +270,26 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [shayaris.length, onClose]);
+  }, [activeShayaris.length, onClose]);
 
-  if (!activeShayari) return null;
-
-  // Resolve current active theme (handles auto-mood)
-  let resolvedThemeKey = stageTheme;
-  if (stageTheme === 'auto') {
-    const moodKey = (activeShayari.mood || '').toLowerCase();
-    resolvedThemeKey = STAGE_THEMES[moodKey] ? moodKey : 'midnight';
+  // Resolve visual atmosphere
+  let resolvedThemeKey = 'midnight';
+  if (selectedTheme === 'all') {
+    if (stageLighting === 'auto' && activeShayari) {
+      const moodKey = (activeShayari.mood || '').toLowerCase();
+      resolvedThemeKey = STAGE_THEMES[moodKey] ? moodKey : 'midnight';
+    } else {
+      resolvedThemeKey = stageLighting;
+    }
+  } else {
+    resolvedThemeKey = STAGE_THEMES[selectedTheme] ? selectedTheme : 'midnight';
   }
   const currentTheme = STAGE_THEMES[resolvedThemeKey] || STAGE_THEMES.midnight;
 
-  const scriptConfig = SCRIPTS.find(s => s.id === activeShayari.script) || SCRIPTS[0];
-  const isRtl = Boolean(scriptConfig.rtl);
-  const stanzas = (activeShayari.lines || '').split('\n\n');
+  const currentThemeConfig = THEME_MODES.find(m => m.id === selectedTheme) || THEME_MODES[0];
+  const scriptConfig = activeShayari ? (SCRIPTS.find(s => s.id === activeShayari.script) || SCRIPTS[0]) : SCRIPTS[0];
+  const isRtl = Boolean(scriptConfig?.rtl);
+  const stanzas = activeShayari ? (activeShayari.lines || '').split('\n\n') : [];
 
   return (
     <div 
@@ -269,26 +308,31 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
         style={{ backgroundColor: currentTheme.glow }}
       />
 
-      {/* TOP HEADER CONTROLS (Can be hidden for full immersive reading) */}
-      <header className={`relative z-20 px-4 sm:px-8 py-3 transition-all duration-300 border-b border-white/10 bg-black/20 backdrop-blur-md ${
+      {/* TOP HEADER CONTROLS */}
+      <header className={`relative z-20 px-3 sm:px-8 py-3 transition-all duration-300 border-b border-white/10 bg-black/30 backdrop-blur-md ${
         showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
       }`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           
-          {/* Brand & Mode info */}
+          {/* Brand & Recital info */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
               <Feather className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="truncate">
-              <h2 className="font-display text-sm sm:text-base font-bold text-white flex items-center gap-2 truncate">
+              <h2 className="font-display text-sm sm:text-base font-bold text-white flex items-center gap-1.5 sm:gap-2 truncate">
                 <span>بزمِ مشاعرہ</span>
                 <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-serif">
                   Recital Mode
                 </span>
+                {selectedTheme !== 'all' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                    {currentThemeConfig.name} only
+                  </span>
+                )}
               </h2>
               <p className="text-[10px] sm:text-xs text-white/50 font-serif truncate">
-                Swipe left / right on phone
+                {activeShayaris.length} {activeShayaris.length === 1 ? 'verse' : 'verses'} • Swipe left / right
               </p>
             </div>
           </div>
@@ -298,10 +342,11 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
             {/* Auto Play */}
             <button
               onClick={() => setAutoPlay(!autoPlay)}
+              disabled={activeShayaris.length <= 1}
               className={`p-2 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 ${
                 autoPlay
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-white/5 text-white/70 border-white/10 hover:text-white'
+                  : 'bg-white/5 text-white/70 border-white/10 hover:text-white disabled:opacity-40'
               }`}
               title={autoPlay ? 'Pause Auto-Play' : 'Start Auto-Play (7s per verse)'}
             >
@@ -348,30 +393,65 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
 
         </div>
 
-        {/* HORIZONTAL THEME & MOOD PRESET STRIP (Mobile Scrollable) */}
+        {/* THEME & MOOD FILTER STRIP (Optimized for Mobile Phone Swipe & Tap) */}
         <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <span className="text-[10px] text-white/40 uppercase tracking-wider font-mono pr-1 shrink-0 flex items-center gap-1">
             <Palette className="w-3 h-3 text-amber-400" />
-            Modes:
+            Theme:
           </span>
 
-          {Object.values(STAGE_THEMES).map((thm) => {
-            const isSelected = stageTheme === thm.id;
+          {THEME_MODES.map((thm) => {
+            const isSelected = selectedTheme === thm.id;
+            const count = thm.id === 'all' 
+              ? shayaris.length 
+              : shayaris.filter(s => (s.mood || '').trim().toLowerCase() === thm.id).length;
+
             return (
               <button
                 key={thm.id}
-                onClick={() => setStageTheme(thm.id)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all border flex items-center gap-1.5 ${
+                onClick={() => handleSelectTheme(thm.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all border flex items-center gap-1.5 touch-manipulation ${
                   isSelected
-                    ? 'bg-white/20 text-white border-white/40 shadow-sm font-semibold'
-                    : 'bg-white/5 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
+                    ? 'bg-amber-500/25 text-amber-200 border-amber-400/60 shadow-lg shadow-amber-950/30 font-bold scale-[1.02]'
+                    : 'bg-white/5 text-white/65 border-white/10 hover:text-white hover:bg-white/10'
                 }`}
               >
+                <span>{thm.icon}</span>
                 <span>{thm.name}</span>
-                {thm.urdu && <span className="text-[10px] opacity-70 font-nastaliq">({thm.urdu})</span>}
+                {thm.urdu && <span className="text-[10px] opacity-75 font-nastaliq">({thm.urdu})</span>}
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  isSelected ? 'bg-amber-400 text-black font-bold' : 'bg-white/10 text-white/50'
+                }`}>
+                  {count}
+                </span>
               </button>
             );
           })}
+
+          {/* When 'All' mode is active, allow switching stage atmosphere preset */}
+          {selectedTheme === 'all' && (
+            <div className="ml-2 pl-2 border-l border-white/10 flex items-center gap-1 shrink-0">
+              <span className="text-[10px] text-white/40 font-mono pr-1">Atmosphere:</span>
+              {[
+                { id: 'midnight', label: 'Midnight' },
+                { id: 'crimson', label: 'Crimson' },
+                { id: 'emerald', label: 'Emerald' },
+                { id: 'auto', label: '✨ Auto' }
+              ].map(st => (
+                <button
+                  key={st.id}
+                  onClick={() => setStageLighting(st.id)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
+                    stageLighting === st.id
+                      ? 'bg-white/20 text-white border-white/40'
+                      : 'bg-transparent text-white/50 border-white/5 hover:text-white/80'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
@@ -381,68 +461,108 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
         className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 sm:p-8 max-w-4xl mx-auto w-full text-center cursor-pointer select-none"
       >
         
-        {/* Title & Active Mood Pill */}
-        <div className="mb-6 sm:mb-8 space-y-2 pointer-events-none">
-          {activeShayari.title && (
-            <h3 className="font-display text-base sm:text-xl font-medium tracking-wide text-white/90">
-              {activeShayari.title}
-            </h3>
-          )}
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-[11px] uppercase tracking-widest px-3 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 font-serif">
-              {activeShayari.mood || 'Kalam'}
-            </span>
-            {stageTheme === 'auto' && (
-              <span className="text-[10px] font-mono text-amber-300/80">
-                • Atmosphere: {activeShayari.mood}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Couplets / Verses in Commanding Calligraphy (Phone Optimized) */}
-        <div 
-          className={`w-full space-y-5 sm:space-y-8 transition-all duration-300 pointer-events-none ${scriptConfig.fontClass} ${
-            isRtl ? 'font-nastaliq text-right sm:text-center' : 'text-center'
-          } ${currentTheme.text}`}
-          style={{ transform: `scale(${fontScale})` }}
-        >
-          {stanzas.map((stanza, i) => (
-            <div 
-              key={i} 
-              className="whitespace-pre-line text-xl sm:text-3xl md:text-4xl leading-[2.1] sm:leading-[2.4] font-normal drop-shadow-xl px-2"
-            >
-              {stanza}
+        {activeShayari ? (
+          <>
+            {/* Title & Active Mood Pill */}
+            <div className="mb-6 sm:mb-8 space-y-2 pointer-events-none animate-fade-in">
+              {activeShayari.title && (
+                <h3 className="font-display text-base sm:text-xl font-medium tracking-wide text-white/90">
+                  {activeShayari.title}
+                </h3>
+              )}
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-[11px] uppercase tracking-widest px-3 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 font-serif">
+                  {activeShayari.mood || 'Kalam'}
+                </span>
+                {selectedTheme === 'all' && stageLighting === 'auto' && (
+                  <span className="text-[10px] font-mono text-amber-300/80">
+                    • Atmosphere: {activeShayari.mood}
+                  </span>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
 
-        {/* Poet Byline / Takhallis */}
-        <div className="mt-8 sm:mt-12 flex items-center justify-center gap-2 pointer-events-none">
-          <Sparkles className={`w-4 h-4 ${currentTheme.accent}`} />
-          <p className="font-serif italic text-base sm:text-xl font-semibold tracking-wide text-amber-300/90">
-            ~ {activeShayari.takhallis || activeShayari.poet || 'Ijlaal'}
-          </p>
-        </div>
+            {/* Couplets / Verses in Commanding Calligraphy (Phone Optimized) */}
+            <div 
+              className={`w-full space-y-5 sm:space-y-8 transition-all duration-300 pointer-events-none ${scriptConfig.fontClass} ${
+                isRtl ? 'font-nastaliq text-right sm:text-center' : 'text-center'
+              } ${currentTheme.text}`}
+              style={{ transform: `scale(${fontScale})` }}
+            >
+              {stanzas.map((stanza, i) => (
+                <div 
+                  key={i} 
+                  className="whitespace-pre-line text-xl sm:text-3xl md:text-4xl leading-[2.1] sm:leading-[2.4] font-normal drop-shadow-xl px-2"
+                >
+                  {stanza}
+                </div>
+              ))}
+            </div>
+
+            {/* Poet Byline / Takhallis */}
+            <div className="mt-8 sm:mt-12 flex items-center justify-center gap-2 pointer-events-none">
+              <Sparkles className={`w-4 h-4 ${currentTheme.accent}`} />
+              <p className="font-serif italic text-base sm:text-xl font-semibold tracking-wide text-amber-300/90">
+                ~ {activeShayari.takhallis || activeShayari.poet || 'Ijlaal'}
+              </p>
+            </div>
+          </>
+        ) : (
+          /* Poetic Empty State when no verses exist under selected theme */
+          <div className="flex flex-col items-center justify-center py-12 px-6 max-w-md mx-auto text-center space-y-4 animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-amber-300/80 shadow-inner">
+              <Feather className="w-8 h-8 opacity-70" />
+            </div>
+            <div>
+              <h3 className="font-display text-xl sm:text-2xl font-bold text-white mb-1.5">
+                اس کیفیت کا کوئی کلام نہیں
+              </h3>
+              <p className="text-xs sm:text-sm text-white/60 font-serif leading-relaxed">
+                No shayaris found under the <span className="text-amber-300 font-semibold">{currentThemeConfig.name}</span> theme in your Diwan yet.
+              </p>
+            </div>
+            <button
+              onClick={() => handleSelectTheme('all')}
+              className="mt-3 px-5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-all active:scale-95 shadow-md flex items-center gap-2 touch-manipulation"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Show All Verses (تمام کلام)</span>
+            </button>
+          </div>
+        )}
 
       </main>
 
       {/* BOTTOM FOOTER & MOBILE THUMB NAVIGATION */}
-      <footer className={`relative z-20 px-4 sm:px-8 py-3.5 transition-all duration-300 border-t border-white/10 bg-black/20 backdrop-blur-md ${
+      <footer className={`relative z-20 px-4 sm:px-8 py-3.5 transition-all duration-300 border-t border-white/10 bg-black/30 backdrop-blur-md ${
         showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           
           {/* Verse Counter */}
-          <div className="text-xs font-mono text-white/60">
-            <span className="text-white font-bold">{currentIndex + 1}</span> of <span className="text-white font-bold">{shayaris.length}</span>
+          <div className="text-xs font-mono text-white/70 flex items-center gap-1.5">
+            {activeShayaris.length > 0 ? (
+              <>
+                <span className="text-white font-bold">{safeIndex + 1}</span>
+                <span className="text-white/40">/</span>
+                <span className="text-white font-bold">{activeShayaris.length}</span>
+                {selectedTheme !== 'all' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-amber-300 border border-white/10 ml-1 font-serif hidden sm:inline-block">
+                    {currentThemeConfig.name} ({currentThemeConfig.urdu})
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-white/40">0 verses</span>
+            )}
           </div>
 
           {/* Thumb Navigation Buttons */}
           <div className="flex items-center gap-2">
             <button
               onClick={goToPrev}
-              className="flex items-center gap-1 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-medium text-xs transition-all shadow-md touch-manipulation"
+              disabled={activeShayaris.length <= 1}
+              className="flex items-center gap-1 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-medium text-xs transition-all shadow-md touch-manipulation disabled:opacity-40 disabled:pointer-events-none"
               title="Previous Kalam"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -451,7 +571,8 @@ export default function MushairaModal({ shayaris, initialIndex = 0, onClose }) {
 
             <button
               onClick={goToNext}
-              className="flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 active:scale-95 text-[#140e08] font-bold text-xs shadow-lg shadow-amber-950/40 transition-all touch-manipulation"
+              disabled={activeShayaris.length <= 1}
+              className="flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 active:scale-95 text-[#140e08] font-bold text-xs shadow-lg shadow-amber-950/40 transition-all touch-manipulation disabled:opacity-40 disabled:pointer-events-none"
               title="Next Kalam"
             >
               <span>Next</span>

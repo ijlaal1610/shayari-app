@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, ChevronLeft, ChevronRight, Maximize2, Minimize2, 
-  Sparkles, Feather, Play, Pause, Volume2, Type, Tag,
-  Palette, Smartphone, Eye, EyeOff
+  Sparkles, Feather, Play, Pause, Volume2, VolumeX, Type, Tag,
+  Palette, Smartphone, Eye, EyeOff, Music
 } from 'lucide-react';
 import { SCRIPTS } from '../data/sampleShayaris';
 
@@ -156,19 +156,153 @@ const THEME_MODES = [
   { id: 'falsafa', name: 'Falsafa', urdu: 'فلسفہ', icon: '📜' }
 ];
 
-export default function MushairaModal({ shayaris = [], initialIndex = 0, onClose }) {
+const SOUND_MODES = [
+  { id: 'off', label: 'Sound: Off', icon: VolumeX },
+  { id: 'tanpura', label: 'Tanpura', icon: Volume2, emoji: '🎵' },
+  { id: 'rain', label: 'Gentle Rain', icon: Volume2, emoji: '🌧️' },
+  { id: 'night', label: 'Night Breeze', icon: Volume2, emoji: '🌙' }
+];
+
+export default function MushairaModal({ shayaris = [], initialIndex = 0, initialTheme = 'all', onClose }) {
   // Theme Mode Filter: 'all' (default, shows all shayaris) or specific mood ('ishq', 'dard', etc.)
-  const [selectedTheme, setSelectedTheme] = useState('all');
+  const [selectedTheme, setSelectedTheme] = useState(initialTheme || 'all');
   const [stageLighting, setStageLighting] = useState('midnight'); // Default stage lighting for 'all' mode: midnight, crimson, emerald, auto
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [fontScale, setFontScale] = useState(1.0); // Mobile responsive scale factor
   const [autoPlay, setAutoPlay] = useState(false);
   const [showControls, setShowControls] = useState(true); // Toggle controls for pure zen on phone
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Atmospheric Audio Ambience (DEFAULT OFF as requested)
+  const [ambientSound, setAmbientSound] = useState('off');
+  const audioCtxRef = useRef(null);
+  const soundNodesRef = useRef([]);
 
   // Touch Swipe tracking
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
+
+  // Web Audio ambient synthesizer
+  const stopAmbientSound = () => {
+    if (soundNodesRef.current) {
+      soundNodesRef.current.forEach(node => {
+        try {
+          if (node.stop) node.stop();
+          if (node.disconnect) node.disconnect();
+        } catch (e) {}
+      });
+      soundNodesRef.current = [];
+    }
+  };
+
+  const startAmbientSound = (type) => {
+    stopAmbientSound();
+    if (type === 'off') return;
+
+    try {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtxClass) return;
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioCtxClass();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.08, ctx.currentTime);
+      masterGain.connect(ctx.destination);
+      soundNodesRef.current.push(masterGain);
+
+      if (type === 'tanpura') {
+        // Classical Indian Tanpura Drone (Sa: C#3 ~138.59 Hz, Pa: G#3 ~207.65 Hz)
+        const freqs = [138.59, 207.65, 277.18, 415.30];
+        freqs.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+          // Subtle harmonic shimmer
+          const lfo = ctx.createOscillator();
+          const lfoGain = ctx.createGain();
+          lfo.frequency.setValueAtTime(0.25 + i * 0.1, ctx.currentTime);
+          lfoGain.gain.setValueAtTime(1.8, ctx.currentTime);
+          lfo.connect(osc.frequency);
+          lfo.start();
+          soundNodesRef.current.push(lfo, lfoGain);
+
+          gain.gain.setValueAtTime(0.035 / (i + 1), ctx.currentTime);
+          osc.connect(gain);
+          gain.connect(masterGain);
+          osc.start();
+          soundNodesRef.current.push(osc, gain);
+        });
+      } else if (type === 'rain') {
+        // Pink Noise generator for gentle rain
+        const bufferSize = ctx.sampleRate * 2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.04;
+          b6 = white * 0.115926;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, ctx.currentTime);
+
+        noise.connect(filter);
+        filter.connect(masterGain);
+        noise.start();
+        soundNodesRef.current.push(noise, filter);
+      } else if (type === 'night') {
+        // Warm low drone + soft midnight ambience
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(110, ctx.currentTime);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start();
+        soundNodesRef.current.push(osc, gain);
+      }
+    } catch (e) {
+      console.warn('Audio ambience error:', e);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopAmbientSound();
+      if (audioCtxRef.current) {
+        try { audioCtxRef.current.close(); } catch (e) {}
+      }
+    };
+  }, []);
+
+  const cycleAmbientSound = () => {
+    const sequence = ['off', 'tanpura', 'rain', 'night'];
+    const nextIdx = (sequence.indexOf(ambientSound) + 1) % sequence.length;
+    const nextMode = sequence[nextIdx];
+    setAmbientSound(nextMode);
+    startAmbientSound(nextMode);
+    triggerHaptic();
+  };
 
   // Filter shayaris based on selected theme mode
   const activeShayaris = React.useMemo(() => {
@@ -339,6 +473,26 @@ export default function MushairaModal({ shayaris = [], initialIndex = 0, onClose
 
           {/* Action Tools */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Atmospheric Ambient Sound (DEFAULT OFF) */}
+            <button
+              onClick={cycleAmbientSound}
+              className={`p-2 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 ${
+                ambientSound !== 'off'
+                  ? 'bg-purple-500/25 text-purple-200 border-purple-400/50 shadow-md shadow-purple-950/40 font-semibold'
+                  : 'bg-white/5 text-white/60 border-white/10 hover:text-white'
+              }`}
+              title={`Atmospheric Sound: ${ambientSound === 'off' ? 'Off' : ambientSound.toUpperCase()} (Click to cycle Off / Tanpura / Rain / Night)`}
+            >
+              {ambientSound === 'off' ? (
+                <VolumeX className="w-4 h-4 text-white/50" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-purple-300 animate-pulse" />
+              )}
+              <span className="hidden md:inline capitalize">
+                {ambientSound === 'off' ? 'Sound: Off' : ambientSound === 'tanpura' ? '🎵 Tanpura' : ambientSound === 'rain' ? '🌧️ Rain' : '🌙 Night'}
+              </span>
+            </button>
+
             {/* Auto Play */}
             <button
               onClick={() => setAutoPlay(!autoPlay)}

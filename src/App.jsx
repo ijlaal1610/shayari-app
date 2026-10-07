@@ -171,6 +171,17 @@ export default function App() {
 
   const favoritesCount = shayaris.filter(s => s.favorite).length;
   const isDaylight = theme === 'daylight';
+  const [mushairaTarget, setMushairaTarget] = useState({ index: 0, theme: 'all' });
+
+  // Recite a specific shayari in Mushaira mode
+  const handleReciteShayari = (item) => {
+    const idx = shayaris.findIndex(s => s.id === item.id);
+    setMushairaTarget({
+      index: idx >= 0 ? idx : 0,
+      theme: item.mood ? item.mood.toLowerCase() : 'all'
+    });
+    setIsMushairaOpen(true);
+  };
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
@@ -196,7 +207,10 @@ export default function App() {
         setPenName={handlePenNameChange}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onOpenMushaira={() => setIsMushairaOpen(true)}
+        onOpenMushaira={() => {
+          setMushairaTarget({ index: 0, theme: 'all' });
+          setIsMushairaOpen(true);
+        }}
         showInstallBtn={true}
         onInstallApp={handleInstallApp}
       />
@@ -223,6 +237,8 @@ export default function App() {
               setEditingShayari(null);
               setActiveTab('write');
             }}
+            onRecite={handleReciteShayari}
+            theme={theme}
           />
         )}
       </main>
@@ -249,6 +265,8 @@ export default function App() {
       {isMushairaOpen && (
         <MushairaModal
           shayaris={shayaris}
+          initialIndex={mushairaTarget.index}
+          initialTheme={mushairaTarget.theme}
           onClose={() => setIsMushairaOpen(false)}
         />
       )}

@@ -203,6 +203,47 @@ export default function CardExportModal({ shayari, onClose }) {
     }
   };
 
+  const handleNativeShare = async () => {
+    if (!cardContainerRef.current) return;
+    try {
+      setIsExporting(true);
+      const blob = await toBlob(cardContainerRef.current, {
+        pixelRatio: 2.5,
+      });
+
+      if (!blob) {
+        handleDownload();
+        return;
+      }
+
+      const file = new File([blob], `shayari-${selectedFormat}-${Date.now()}.png`, { type: 'image/png' });
+
+      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: title || 'Shayari — ' + author,
+          text: `~ ${author}`
+        });
+        showToastMsg('✨ Shared successfully!');
+      } else if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({
+          title: title || 'Shayari — ' + author,
+          text: `${shayari.lines}\n\n— ${author}`
+        });
+        showToastMsg('✨ Shared text!');
+      } else {
+        handleCopyImage();
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Share error:', err);
+        handleDownload();
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Font size classes
   const fontSizes = {
     sm: 'text-base sm:text-lg leading-relaxed',
@@ -709,15 +750,26 @@ export default function CardExportModal({ shayari, onClose }) {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Native Mobile Share */}
+            <button
+              onClick={handleNativeShare}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold text-amber-300 transition-colors"
+              title="Share directly to WhatsApp, Instagram, Telegram"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+
             <button
               onClick={handleCopyImage}
               disabled={isExporting}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#221a13] hover:bg-[#2d2219] border border-[#382a1e] text-xs font-semibold text-[#f5ede0] transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#221a13] hover:bg-[#2d2219] border border-[#382a1e] text-xs font-semibold text-[#f5ede0] transition-colors"
               title="Copy high-res image to clipboard"
             >
               <Copy className="w-3.5 h-3.5 text-amber-400" />
-              <span>Copy Image</span>
+              <span>Copy</span>
             </button>
 
             <button

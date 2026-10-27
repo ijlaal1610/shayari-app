@@ -39,20 +39,34 @@ export default function App() {
       e.preventDefault();
       setDeferredPrompt(e);
     };
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      showToast('Qalam & Diwan installed to your home screen!');
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstallApp = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setDeferredPrompt(null);
-        showToast('App installed successfully!');
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          setDeferredPrompt(null);
+          showToast('App installed successfully!');
+        }
+      } catch (err) {
+        console.warn('Install prompt error:', err);
       }
     } else {
-      alert('To install on your phone:\n• iPhone (Safari): Tap the Share icon ➔ "Add to Home Screen"\n• Android (Chrome): Tap the three dots ➔ "Install App" or "Add to Home Screen"');
+      alert('To install on your phone:\n\n• Android (Chrome): Tap the three dots (⋮) ➔ "Install app" or "Add to Home screen"\n• iPhone (Safari): Tap the Share icon ➔ "Add to Home Screen"');
     }
   };
 
@@ -77,11 +91,13 @@ export default function App() {
 
     // Initial load from local, then try server
     const local = getLocalShayaris();
-    setShayaris(local);
+    if (Array.isArray(local) && local.length > 0) {
+      setShayaris(local.filter(Boolean));
+    }
 
     fetchServerShayaris().then((serverData) => {
       if (Array.isArray(serverData) && serverData.length > 0) {
-        setShayaris(serverData);
+        setShayaris(serverData.filter(Boolean));
       }
     }).catch(() => {});
   }, []);
@@ -99,16 +115,25 @@ export default function App() {
 
   // Save / Update Handler
   const handleSave = async (data) => {
-    if (editingShayari) {
-      const updated = await updateShayari(editingShayari.id, data);
-      setShayaris(prev => prev.map(s => s.id === updated.id ? updated : s));
-      setEditingShayari(null);
-      showToast('Verse updated in Diwan');
-      setActiveTab('diwan');
-    } else {
-      const created = await createShayari(data);
-      setShayaris(prev => [created, ...prev.filter(s => s.id !== created.id)]);
-      showToast('Verse preserved in Diwan');
+    try {
+      if (editingShayari) {
+        const updated = await updateShayari(editingShayari.id, data);
+        if (updated && updated.id) {
+          setShayaris(prev => (prev || []).filter(Boolean).map(s => s && s.id === updated.id ? updated : s));
+        }
+        setEditingShayari(null);
+        showToast('Verse updated in Diwan');
+        setActiveTab('diwan');
+      } else {
+        const created = await createShayari(data);
+        if (created && created.id) {
+          setShayaris(prev => [created, ...(prev || []).filter(Boolean).filter(s => s && s.id !== created.id)]);
+        }
+        showToast('Verse preserved in Diwan');
+      }
+    } catch (err) {
+      console.error('Save error:', err);
+      showToast('Error saving verse');
     }
   };
 
@@ -116,18 +141,18 @@ export default function App() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this verse from your Diwan?')) {
       await deleteShayari(id);
-      setShayaris(prev => prev.filter(s => s.id !== id));
+      setShayaris(prev => (prev || []).filter(Boolean).filter(s => s && s.id !== id));
       showToast('Verse deleted');
     }
   };
 
   // Toggle Favorite
   const handleToggleFavorite = async (id) => {
-    const item = shayaris.find(s => s.id === id);
+    const item = (shayaris || []).find(s => s && s.id === id);
     if (!item) return;
     const newFav = !item.favorite;
     await updateShayari(id, { favorite: newFav });
-    setShayaris(prev => prev.map(s => s.id === id ? { ...s, favorite: newFav } : s));
+    setShayaris(prev => (prev || []).filter(Boolean).map(s => s && s.id === id ? { ...s, favorite: newFav } : s));
   };
 
   // Edit action

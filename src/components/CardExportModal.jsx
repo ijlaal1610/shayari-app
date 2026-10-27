@@ -778,10 +778,7 @@ export default function CardExportModal({
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5 text-white/45 font-serif text-[11px]">
-                      <Sparkles className="w-3.5 h-3.5" style={{ color: themeConfig.accent }} />
-                      <span>دیوانِ شعر</span>
-                    </div>
+                    <div />
                   )}
 
                   <div className="flex items-center gap-2 font-mono text-[10px] text-white/50">

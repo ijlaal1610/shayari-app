@@ -12,7 +12,8 @@ export default function ShayariCard({
   onToggleFavorite, 
   onExportCard,
   onRecite,
-  theme = 'dark'
+  theme = 'dark',
+  showAuthorInShare = true
 }) {
   const [copied, setCopied] = useState(false);
   const isDaylight = theme === 'daylight';
@@ -22,18 +23,22 @@ export default function ShayariCard({
   const isRtl = Boolean(scriptConfig.rtl);
 
   const handleCopy = () => {
-    const formatted = `${shayari.lines}\n\n— ${shayari.takhallis || shayari.poet || 'Ijlaal'}`;
+    const shouldInclude = showAuthorInShare && localStorage.getItem('shayari_show_author') !== 'false';
+    const authorSig = shouldInclude ? `\n\n— ${shayari.takhallis || shayari.poet || 'Ijlaal'}` : '';
+    const formatted = `${shayari.lines}${authorSig}`;
     navigator.clipboard.writeText(formatted);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = async () => {
-    const formatted = `${shayari.lines}\n\n— ${shayari.takhallis || shayari.poet || 'Ijlaal'}`;
+    const shouldInclude = showAuthorInShare && localStorage.getItem('shayari_show_author') !== 'false';
+    const authorSig = shouldInclude ? `\n\n— ${shayari.takhallis || shayari.poet || 'Ijlaal'}` : '';
+    const formatted = `${shayari.lines}${authorSig}`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: shayari.title || 'Shayari — ' + (shayari.takhallis || 'Ijlaal'),
+          title: shayari.title || (shouldInclude ? 'Shayari — ' + (shayari.takhallis || 'Ijlaal') : 'Shayari'),
           text: formatted
         });
         return;

@@ -5,7 +5,8 @@ import {
   Type, Check, Loader2, Music, Copy, Smartphone, 
   Square, Layout, AlignLeft, AlignCenter, AlignRight,
   Sliders, SlidersHorizontal, Disc, Play, Share2,
-  Image as ImageIcon, Trash2, Sliders as SliderIcon
+  Image as ImageIcon, Trash2, Sliders as SliderIcon,
+  UserCheck, UserX
 } from 'lucide-react';
 import { SCRIPTS } from '../data/sampleShayaris';
 
@@ -96,7 +97,12 @@ const THEMES = [
   }
 ];
 
-export default function CardExportModal({ shayari, onClose }) {
+export default function CardExportModal({ 
+  shayari, 
+  onClose,
+  initialShowAuthor = true,
+  onGlobalToggleShowAuthor
+}) {
   const [selectedFormat, setSelectedFormat] = useState('story'); // 'story' | 'square' | 'compact'
   const [selectedStyle, setSelectedStyle] = useState('spotify'); // 'spotify' | 'classic' | 'minimal'
   const [selectedTheme, setSelectedTheme] = useState(THEMES[0].id);
@@ -111,11 +117,24 @@ export default function CardExportModal({ shayari, onClose }) {
   // Customization controls
   const [title, setTitle] = useState(shayari.title || 'Kalam');
   const [author, setAuthor] = useState(shayari.takhallis || shayari.poet || 'Ijlaal');
+  const [showAuthor, setShowAuthor] = useState(() => {
+    if (typeof initialShowAuthor === 'boolean') return initialShowAuthor;
+    const saved = localStorage.getItem('shayari_show_author');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [fontSize, setFontSize] = useState('lg'); // 'sm' | 'md' | 'lg' | 'xl'
   const [textAlign, setTextAlign] = useState('center'); // 'left' | 'center' | 'right'
   const [showPlayerBar, setShowPlayerBar] = useState(true);
   const [showBlurBackdrop, setShowBlurBackdrop] = useState(true);
   const [highlightLineIdx, setHighlightLineIdx] = useState(0); // which line is glowing
+  
+  const handleToggleShowAuthor = (checked) => {
+    setShowAuthor(checked);
+    localStorage.setItem('shayari_show_author', checked ? 'true' : 'false');
+    if (onGlobalToggleShowAuthor) {
+      onGlobalToggleShowAuthor(checked);
+    }
+  };
   
   // Export states
   const [isExporting, setIsExporting] = useState(false);
@@ -162,7 +181,8 @@ export default function CardExportModal({ shayari, onClose }) {
       });
 
       const link = document.createElement('a');
-      const filename = `shayari-${selectedFormat}-${(author || 'poet').toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.png`;
+      const authorSlug = showAuthor ? (author || 'poet').toLowerCase().replace(/\s+/g, '-') : 'kalam';
+      const filename = `shayari-${selectedFormat}-${authorSlug}-${Date.now()}.png`;
       link.download = filename;
       link.href = dataUrl;
       link.click();
@@ -221,14 +241,14 @@ export default function CardExportModal({ shayari, onClose }) {
       if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: title || 'Shayari — ' + author,
-          text: `~ ${author}`
+          title: title || (showAuthor ? 'Shayari — ' + author : 'Shayari'),
+          text: showAuthor ? `~ ${author}` : ''
         });
         showToastMsg('✨ Shared successfully!');
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({
-          title: title || 'Shayari — ' + author,
-          text: `${shayari.lines}\n\n— ${author}`
+          title: title || (showAuthor ? 'Shayari — ' + author : 'Shayari'),
+          text: showAuthor ? `${shayari.lines}\n\n— ${author}` : shayari.lines
         });
         showToastMsg('✨ Shared text!');
       } else {
@@ -501,6 +521,40 @@ export default function CardExportModal({ shayari, onClose }) {
 
             {/* Toggles & Options */}
             <div className="pt-2 border-t border-[#241c15] space-y-2 text-xs text-[#cfc1b0]">
+              {/* Hide / Show Poet Toggle */}
+              <div className="flex items-center justify-between py-1">
+                <span className="flex items-center gap-1.5 text-[#a89887]">
+                  {showAuthor ? (
+                    <UserCheck className="w-3.5 h-3.5 text-amber-400" />
+                  ) : (
+                    <UserX className="w-3.5 h-3.5 text-rose-400" />
+                  )}
+                  <span>Poet's Signature (~ {author || 'Name'})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleShowAuthor(!showAuthor)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                    showAuthor
+                      ? 'bg-amber-600/30 text-amber-200 border-amber-500/40 font-semibold shadow-sm'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30 font-semibold'
+                  }`}
+                  title={showAuthor ? "Click to HIDE poet's name when sharing" : "Poet's name is HIDDEN on shares (Click to show)"}
+                >
+                  {showAuthor ? (
+                    <>
+                      <UserCheck className="w-3 h-3 text-amber-300" />
+                      <span>Shown</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserX className="w-3 h-3 text-rose-300" />
+                      <span>Hidden</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-[#a89887]">
                   <Music className="w-3.5 h-3.5 text-emerald-400" />
@@ -627,9 +681,11 @@ export default function CardExportModal({ shayari, onClose }) {
                       <h4 className="font-display font-bold text-base text-white truncate tracking-wide">
                         {title || 'Ghazal'}
                       </h4>
-                      <p className="text-xs text-white/70 font-serif truncate">
-                        ~ {author || 'Ijlaal'}
-                      </p>
+                      {showAuthor && (
+                        <p className="text-xs text-white/70 font-serif truncate">
+                          ~ {author || 'Ijlaal'}
+                        </p>
+                      )}
                     </div>
 
                     {/* Spotify Pill / Music Badge */}
@@ -654,7 +710,7 @@ export default function CardExportModal({ shayari, onClose }) {
                   /* Minimalist Header */
                   <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs text-white/60 font-mono">
                     <span>{title || 'VERSES'}</span>
-                    <span>~ {author || 'IJLAAL'}</span>
+                    {showAuthor && <span>~ {author || 'IJLAAL'}</span>}
                   </div>
                 )}
               </div>
@@ -714,12 +770,19 @@ export default function CardExportModal({ shayari, onClose }) {
 
                 {/* Footer Brand & Author */}
                 <div className="flex items-center justify-between text-xs text-white/70">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" style={{ color: themeConfig.accent }} />
-                    <span className="font-serif italic font-medium">
-                      ~ {author || 'Ijlaal'}
-                    </span>
-                  </div>
+                  {showAuthor ? (
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" style={{ color: themeConfig.accent }} />
+                      <span className="font-serif italic font-medium">
+                        ~ {author || 'Ijlaal'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-white/45 font-serif text-[11px]">
+                      <Sparkles className="w-3.5 h-3.5" style={{ color: themeConfig.accent }} />
+                      <span>دیوانِ شعر</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 font-mono text-[10px] text-white/50">
                     <span className="tracking-widest">ılılıllı</span>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Search, Heart, LayoutGrid, List, Filter, 
-  PenTool, BookOpen, Sparkles, X
+  PenTool, BookOpen, Sparkles, X, UserCheck, UserX
 } from 'lucide-react';
 import ShayariCard from './ShayariCard';
 import { MOODS } from '../data/sampleShayaris';
@@ -14,7 +14,9 @@ export default function ShayariList({
   onExportCard, 
   onGoToWrite,
   onRecite,
-  theme = 'dark'
+  theme = 'dark',
+  showAuthorInShare = true,
+  onToggleShowAuthor
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMood, setSelectedMood] = useState('ALL');
@@ -105,6 +107,30 @@ export default function ShayariList({
               <Heart className={`w-3.5 h-3.5 ${favoritesOnly ? 'fill-rose-500' : ''}`} />
               <span>Favorites ({favoritesCount})</span>
             </button>
+
+            {/* Quick Hide / Show Poet in Share Toggle */}
+            {onToggleShowAuthor && (
+              <button
+                onClick={onToggleShowAuthor}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
+                  !showAuthorInShare
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm'
+                    : isDaylight
+                      ? 'bg-[#ede5d5] text-[#705c48] border-[#d8ccb8] hover:text-[#22170d]'
+                      : 'bg-[#140f0b] text-[#9b8b78] border-[#292017] hover:text-[#e4d6c4]'
+                }`}
+                title={showAuthorInShare ? "Click to HIDE poet's name when sharing/copying" : "Poet's name is HIDDEN on shares (Click to show)"}
+              >
+                {showAuthorInShare ? (
+                  <UserCheck className="w-3.5 h-3.5 text-amber-500" />
+                ) : (
+                  <UserX className="w-3.5 h-3.5 text-rose-400" />
+                )}
+                <span className="hidden sm:inline">
+                  {showAuthorInShare ? 'Poet: Shown' : 'Poet: Hidden'}
+                </span>
+              </button>
+            )}
 
             {/* View Mode Toggle */}
             <div className={`flex items-center p-1 rounded-xl border ${
@@ -239,6 +265,7 @@ export default function ShayariList({
               onExportCard={onExportCard}
               onRecite={onRecite}
               theme={theme}
+              showAuthorInShare={showAuthorInShare}
             />
           ))}
         </div>

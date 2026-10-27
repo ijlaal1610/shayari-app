@@ -218,6 +218,20 @@ export default function App() {
     showToast('Synced latest verses from server');
   };
 
+  const [showAuthorInShare, setShowAuthorInShare] = useState(() => {
+    const saved = localStorage.getItem('shayari_show_author');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const handleToggleShowAuthor = (overrideVal) => {
+    setShowAuthorInShare(prev => {
+      const next = typeof overrideVal === 'boolean' ? overrideVal : !prev;
+      localStorage.setItem('shayari_show_author', next ? 'true' : 'false');
+      showToast(next ? "Poet's name included in shares" : "Poet's name HIDDEN in shares");
+      return next;
+    });
+  };
+
   const favoritesCount = shayaris.filter(s => s.favorite).length;
   const isDaylight = theme === 'daylight';
   const [mushairaTarget, setMushairaTarget] = useState({ index: 0, theme: 'all' });
@@ -289,6 +303,8 @@ export default function App() {
             }}
             onRecite={handleReciteShayari}
             theme={theme}
+            showAuthorInShare={showAuthorInShare}
+            onToggleShowAuthor={handleToggleShowAuthor}
           />
         )}
       </main>
@@ -298,6 +314,8 @@ export default function App() {
         <CardExportModal
           shayari={exportingShayari}
           onClose={() => setExportingShayari(null)}
+          initialShowAuthor={showAuthorInShare}
+          onGlobalToggleShowAuthor={handleToggleShowAuthor}
         />
       )}
 

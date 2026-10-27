@@ -274,6 +274,7 @@ export default function App() {
             penName={penName}
             onViewDiwan={() => setActiveTab('diwan')}
             onExportCurrent={(draft) => setExportingShayari(draft)}
+            theme={theme}
           />
         ) : (
           <ShayariList

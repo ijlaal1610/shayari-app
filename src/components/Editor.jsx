@@ -13,10 +13,12 @@ export default function Editor({
   onCancelEdit, 
   penName, 
   onViewDiwan,
-  onExportCurrent 
+  onExportCurrent,
+  theme = 'dark'
 }) {
   const [title, setTitle] = useState('');
   const [lines, setLines] = useState('');
+  const [takhallis, setTakhallis] = useState(penName || 'Ijlaal');
   const [mood, setMood] = useState('Ishq');
   const [script, setScript] = useState('roman');
   const [isZenMode, setIsZenMode] = useState(false);
@@ -37,13 +39,16 @@ export default function Editor({
       setLines(editingShayari.lines || '');
       setMood(editingShayari.mood || 'Ishq');
       setScript(editingShayari.script || 'roman');
+      setTakhallis(editingShayari.takhallis || editingShayari.poet || penName || 'Ijlaal');
       if (editingShayari.script === 'nastaliq' || editingShayari.script === 'urdu') {
         setAutoKeyboard('ur');
       } else if (editingShayari.script === 'hindi') {
         setAutoKeyboard('hi');
       }
+    } else {
+      setTakhallis(prev => (prev === 'Ijlaal' || !prev) ? (penName || 'Ijlaal') : prev);
     }
-  }, [editingShayari]);
+  }, [editingShayari, penName]);
 
   // Sync script change with auto-keyboard suggestion
   const handleScriptChange = (newScript) => {
@@ -194,12 +199,13 @@ export default function Editor({
       alert('Please write at least one line or couplet first.');
       return;
     }
+    const authorName = (takhallis || '').trim() || penName || 'Ijlaal';
     if (onExportCurrent) {
       onExportCurrent({
         title: title.trim() || 'Kalam',
         lines: lines.trim(),
-        poet: penName || 'Ijlaal',
-        takhallis: penName || 'Ijlaal',
+        poet: authorName,
+        takhallis: authorName,
         mood,
         script,
         favorite: editingShayari ? editingShayari.favorite : false
@@ -220,6 +226,7 @@ export default function Editor({
     }
     setTitle('');
     setLines('');
+    setTakhallis(penName || 'Ijlaal');
     setCandidates([]);
     setActiveWordInfo(null);
     if (editingShayari && onCancelEdit) {
@@ -234,12 +241,13 @@ export default function Editor({
     }
 
     setSaveStatus('saving');
+    const authorName = (takhallis || '').trim() || penName || 'Ijlaal';
     const payload = {
       id: editingShayari ? editingShayari.id : undefined,
       title: title.trim() || lines.trim().split('\n')[0].substring(0, 35) + '...',
       lines: lines.trim(),
-      poet: penName || 'Ijlaal',
-      takhallis: penName || 'Ijlaal',
+      poet: authorName,
+      takhallis: authorName,
       mood,
       script,
       favorite: editingShayari ? editingShayari.favorite : false
@@ -265,28 +273,38 @@ export default function Editor({
     ? POETIC_SYMBOLS.hi
     : [];
 
+  const isDaylight = theme === 'daylight';
+
   return (
-    <div className={`transition-all duration-300 ${isZenMode ? 'fixed inset-0 z-50 bg-[#0a0806] p-6 sm:p-12 overflow-y-auto' : 'max-w-4xl mx-auto py-8 px-4 sm:px-6'}`}>
+    <div className={`transition-all duration-300 ${isZenMode ? (isDaylight ? 'fixed inset-0 z-50 bg-[#faf6ee] p-6 sm:p-12 overflow-y-auto' : 'fixed inset-0 z-50 bg-[#0a0806] p-6 sm:p-12 overflow-y-auto') : 'max-w-4xl mx-auto py-8 px-4 sm:px-6'}`}>
       
       {/* Editor Container Card */}
-      <div className="relative rounded-2xl bg-gradient-to-b from-[#18130e] to-[#120e0a] border border-[#2b2219] shadow-2xl p-6 sm:p-10 backdrop-blur-xl">
+      <div className={`relative rounded-2xl border shadow-2xl p-6 sm:p-10 backdrop-blur-xl transition-colors duration-300 ${
+        isDaylight 
+          ? 'bg-[#fbf7ee] border-[#ded4c3] text-[#2c2217] shadow-amber-900/10'
+          : 'bg-gradient-to-b from-[#18130e] to-[#120e0a] border-[#2b2219] text-[#ede2d0]'
+      }`}>
         
         {/* Top Header / Mode Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-[#261f18]">
+        <div className={`flex flex-wrap items-center justify-between gap-4 pb-6 border-b ${isDaylight ? 'border-[#e8decd]' : 'border-[#261f18]'}`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <div className={`p-2 rounded-lg border ${
+              isDaylight ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            }`}>
               <Quote className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-display text-lg sm:text-xl font-bold text-[#f2e8dc] flex items-center gap-2">
+              <h2 className={`font-display text-lg sm:text-xl font-bold flex items-center gap-2 ${isDaylight ? 'text-[#1c130b]' : 'text-[#f2e8dc]'}`}>
                 {editingShayari ? 'Edit Kalam' : 'Naya Kalam (Compose)'}
                 {editingShayari && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                    isDaylight ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  }`}>
                     Editing Mode
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-[#9d8b77] font-serif">
+              <p className={`text-xs font-serif ${isDaylight ? 'text-[#7d6c5a]' : 'text-[#9d8b77]'}`}>
                 Pour your thoughts into couplets and verses
               </p>
             </div>
@@ -415,26 +433,62 @@ export default function Editor({
           </div>
         )}
 
-        {/* Inputs */}
+        {/* Inputs: Title & Takhallis / Poet */}
         <div className="mt-5 space-y-4">
-          {/* Optional Title Input */}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Unwan (Title / Subject) — optional..."
-            className="w-full bg-transparent px-4 py-2.5 rounded-xl border border-[#2b2118] focus:border-amber-500/50 outline-none text-base font-display text-[#f5ede0] placeholder-[#6b5d4f] transition-all"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Unwan (Title / Subject) — optional..."
+                className={`w-full bg-transparent px-4 py-2.5 rounded-xl border focus:border-amber-500/50 outline-none text-base font-display transition-all ${
+                  isDaylight
+                    ? 'border-[#ded2be] text-[#20170f] placeholder-[#8d7c6b] bg-[#f5ede0]/50 focus:bg-[#fbf7ee]'
+                    : 'border-[#2b2118] text-[#f5ede0] placeholder-[#6b5d4f]'
+                }`}
+              />
+            </div>
+            <div className="relative">
+              <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${
+                isDaylight ? 'text-amber-700' : 'text-amber-500/70'
+              }`}>
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <input
+                type="text"
+                value={takhallis}
+                onChange={(e) => setTakhallis(e.target.value)}
+                placeholder="Takhallis / Poet (تخلص)"
+                className={`w-full bg-transparent pl-9 pr-3.5 py-2.5 rounded-xl border focus:border-amber-500/50 outline-none text-sm font-serif transition-all font-semibold ${
+                  isDaylight
+                    ? 'border-[#ded2be] text-[#844214] placeholder-[#8d7c6b] bg-[#f5ede0]/50 focus:bg-[#fbf7ee]'
+                    : 'border-[#2b2118] text-amber-200 placeholder-[#7a6b5c]'
+                }`}
+                title="Poet's pen name or author signature (Takhallis) for this kalam"
+              />
+            </div>
+          </div>
 
           {/* Main Poetry Textarea with Transliteration Strip */}
-          <div className="relative rounded-2xl bg-[#0f0c09] border border-[#2e241b] focus-within:border-amber-600/60 p-5 sm:p-8 transition-all shadow-inner">
+          <div className={`relative rounded-2xl border focus-within:border-amber-600/60 p-5 sm:p-8 transition-all shadow-inner ${
+            isDaylight
+              ? 'bg-[#f7efe1] border-[#ded2be]'
+              : 'bg-[#0f0c09] border-[#2e241b]'
+          }`}>
             
             {/* Live Transliteration Candidates Bar */}
             {autoKeyboard !== 'off' && candidates.length > 0 && (
-              <div className="mb-4 p-2.5 rounded-xl bg-[#1e1711] border border-amber-500/40 shadow-xl flex flex-wrap items-center gap-2 animate-fade-in">
-                <span className="text-xs text-[#a89582] font-serif flex items-center gap-1 pl-1">
-                  <Languages className="w-3.5 h-3.5 text-amber-400" />
-                  Suggestions for <strong className="text-amber-300 font-mono">"{activeWordInfo?.word}"</strong>:
+              <div className={`mb-4 p-2.5 rounded-xl border shadow-xl flex flex-wrap items-center gap-2 animate-fade-in ${
+                isDaylight 
+                  ? 'bg-[#ede3d2] border-amber-500/40' 
+                  : 'bg-[#1e1711] border-amber-500/40'
+              }`}>
+                <span className={`text-xs font-serif flex items-center gap-1 pl-1 ${
+                  isDaylight ? 'text-[#6d5b4a]' : 'text-[#a89582]'
+                }`}>
+                  <Languages className="w-3.5 h-3.5 text-amber-500" />
+                  Suggestions for <strong className={`${isDaylight ? 'text-amber-900' : 'text-amber-300'} font-mono`}>"{activeWordInfo?.word}"</strong>:
                 </span>
                 
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -445,8 +499,12 @@ export default function Editor({
                       onClick={() => applyCandidate(cand, ' ')}
                       className={`px-3 py-1 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
                         selectedIndex === i
-                          ? 'bg-amber-600 text-white shadow-md font-semibold'
-                          : 'bg-[#292017] text-[#e7dbce] hover:bg-[#382c20]'
+                          ? isDaylight
+                            ? 'bg-amber-700 text-white shadow-md font-semibold'
+                            : 'bg-amber-600 text-white shadow-md font-semibold'
+                          : isDaylight
+                            ? 'bg-[#dec8ae] text-[#2c2016] hover:bg-[#d4bca0]'
+                            : 'bg-[#292017] text-[#e7dbce] hover:bg-[#382c20]'
                       }`}
                     >
                       <span className="text-xs opacity-60 font-mono">{i + 1}.</span>
@@ -455,9 +513,11 @@ export default function Editor({
                   ))}
                 </div>
 
-                <div className="ml-auto text-[11px] text-[#8e7e6d] font-mono hidden sm:flex items-center gap-2">
-                  <span>Press <kbd className="px-1 py-0.5 rounded bg-black/40 text-amber-200">Space</kbd> to select</span>
-                  <span><kbd className="px-1 py-0.5 rounded bg-black/40 text-amber-200">Esc</kbd> to keep English</span>
+                <div className={`ml-auto text-[11px] font-mono hidden sm:flex items-center gap-2 ${
+                  isDaylight ? 'text-[#846f5b]' : 'text-[#8e7e6d]'
+                }`}>
+                  <span>Press <kbd className={`px-1 py-0.5 rounded ${isDaylight ? 'bg-amber-200/80 text-amber-900' : 'bg-black/40 text-amber-200'}`}>Space</kbd> to select</span>
+                  <span><kbd className={`px-1 py-0.5 rounded ${isDaylight ? 'bg-amber-200/80 text-amber-900' : 'bg-black/40 text-amber-200'}`}>Esc</kbd> to keep English</span>
                 </div>
               </div>
             )}
@@ -480,7 +540,11 @@ export default function Editor({
                   ? 'यहाँ अपनी शायरी या पंक्तियाँ लिखें...\nउदाहरण:\nदिल-ए-नादाँ तुझे हुआ क्या है\nआख़िर इस दर्द की दवा क्या है'
                   : 'Write your couplets or ghazal here...\n\nLine 1: Misra-e-Ula\nLine 2: Misra-e-Sani\n\n(Press Ctrl+Enter to save to Diwan)'
               }
-              className={`w-full bg-transparent text-[#f9f2e7] outline-none resize-none placeholder-[#584c3f] transition-all ${
+              className={`w-full bg-transparent outline-none resize-none transition-all ${
+                isDaylight 
+                  ? 'text-[#20170f] placeholder-[#8d7c6b]' 
+                  : 'text-[#f9f2e7] placeholder-[#584c3f]'
+              } ${
                 currentScriptConfig.fontClass
               } ${
                 script === 'nastaliq' || autoKeyboard === 'ur'
@@ -494,8 +558,15 @@ export default function Editor({
             />
 
             {/* Footer Watermark */}
-            <div className={`mt-4 pt-4 border-t border-[#1f1812] flex items-center justify-between text-xs text-[#7e6e5e] font-serif ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <span>Takhallis: <strong className="text-amber-300 font-semibold">{penName || 'Ijlaal'}</strong></span>
+            <div className={`mt-4 pt-4 border-t flex items-center justify-between text-xs font-serif ${
+              isDaylight ? 'border-[#e4d7c4] text-[#7a6958]' : 'border-[#1f1812] text-[#7e6e5e]'
+            } ${isRtl ? 'flex-row-reverse' : ''}`}>
+              <div className="flex items-center gap-1.5">
+                <span>Takhallis:</span>
+                <strong className={`font-semibold font-serif ${isDaylight ? 'text-[#844214]' : 'text-amber-300'}`}>
+                  ~ {takhallis.trim() || penName || 'Ijlaal'}
+                </strong>
+              </div>
               <span className="italic">
                 {autoKeyboard !== 'off' 
                   ? `Auto Keyboard Active (${autoKeyboard === 'ur' ? 'Urdu' : 'Hindi'})` 

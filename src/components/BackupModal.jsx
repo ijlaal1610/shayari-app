@@ -193,11 +193,12 @@ export default function BackupModal({
         const l = line.trim();
         if (l.startsWith('#')) {
           title = l.replace(/^#+\s*/, '').replace(/^\d+\.\s*/, '').replace(/⭐/g, '').trim();
-        } else if (l.toLowerCase().includes('mood') || l.includes('کیفیت')) {
-          const mMatch = l.match(/Mood[:\*]*\s*([A-Za-z]+)/i);
-          if (mMatch) mood = mMatch[1];
-          const pMatch = l.match(/Poet[:\*]*\s*([^\*\|]+)/i);
-          if (pMatch) poet = pMatch[1].trim();
+        } else if (l.toLowerCase().includes('mood') || l.includes('کیفیت') || l.toLowerCase().includes('poet') || l.includes('شاعر')) {
+          const clean = l.replace(/[\*_`#]+/g, '').trim();
+          const mMatch = clean.match(/(?:Mood|کیفیت)(?:\s*\/\s*(?:Mood|کیفیت))?[:\-]\s*([^|•\n]+)/i);
+          if (mMatch && mMatch[1]) mood = mMatch[1].trim();
+          const pMatch = clean.match(/(?:Poet|شاعر)(?:\s*\/\s*(?:Poet|شاعر))?[:\-]\s*([^|•\n]+)/i);
+          if (pMatch && pMatch[1]) poet = pMatch[1].trim();
         } else {
           bodyLines.push(line);
         }
